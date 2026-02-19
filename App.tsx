@@ -9,8 +9,7 @@ import {
   CheckCircle2, 
   Copy,
   LayoutTemplate,
-  HelpCircle,
-  ChevronRight
+  HelpCircle
 } from 'lucide-react';
 import { Student, TestType } from './types';
 import { TEMPLATES } from './constants';
@@ -41,6 +40,15 @@ const App: React.FC = () => {
           score: parts[1]?.trim() || '',
           score2: parts[2]?.trim() || '',
           assignedClass: parts[3]?.trim() || '',
+          testType: selectedTestType,
+        };
+      } else if (selectedTestType === 'TO') {
+        return {
+          id: crypto.randomUUID(),
+          name: parts[0]?.trim() || '',
+          score: parts[1]?.trim() || '',
+          score2: parts[2]?.trim() || '',
+          assignedClass: '', // TO는 배정반 없음
           testType: selectedTestType,
         };
       } else {
@@ -90,10 +98,10 @@ const App: React.FC = () => {
   const generateMessage = (student: Student) => {
     const tpl = customTemplates[student.testType];
     return tpl
-      .replace(/"{name}"/g, `"${student.name}"`)
-      .replace(/"{score}"/g, `"${student.score}"`)
-      .replace(/"{score2}"/g, `"${student.score2 || ''}"`)
-      .replace(/"{assignedClass}"/g, `"${student.assignedClass}"`);
+      .replace(/{name}/g, student.name)
+      .replace(/{score}/g, student.score)
+      .replace(/{score2}/g, student.score2 || '')
+      .replace(/{assignedClass}/g, student.assignedClass);
   };
 
   const copyToClipboard = async (id: string, text: string) => {
@@ -151,7 +159,7 @@ const App: React.FC = () => {
           
           {/* Test Type Selector */}
           <section className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex">
-            {(['EPT', 'TOEFL_JR', 'TOEFL'] as TestType[]).map((type) => (
+            {(['EPT', 'TOEFL_JR', 'TOEFL', 'TO'] as TestType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => setSelectedTestType(type)}
@@ -202,6 +210,8 @@ const App: React.FC = () => {
               <p className="text-xs text-emerald-700 leading-relaxed font-medium">
                 {selectedTestType === 'TOEFL_JR' 
                   ? '1.이름 → 2.점수(R+L) → 3.점수(S+W) → 4.배정반'
+                  : selectedTestType === 'TO'
+                  ? '1.이름 → 2.독해 점수 → 3.문법 점수'
                   : '1.이름 → 2.점수 → 3.배정반'
                 }
                 <br/>순으로 엑셀 영역을 복사해 붙여넣으세요.
@@ -210,7 +220,7 @@ const App: React.FC = () => {
             <textarea
               value={excelInput}
               onChange={(e) => setExcelInput(e.target.value)}
-              placeholder={`여기에 엑셀 데이터를 붙여넣으세요...\n(예: 홍길동\t77\t${selectedTestType === 'TOEFL_JR' ? '80\t' : ''}MEGA 수금)`}
+              placeholder={`여기에 엑셀 데이터를 붙여넣으세요...\n(예: 홍길동\t77\t${(selectedTestType === 'TOEFL_JR' || selectedTestType === 'TO') ? '80\t' : ''}${selectedTestType === 'TO' ? '' : 'MEGA 수금'})`}
               className="w-full h-32 p-4 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none mb-3 bg-slate-50 transition-all focus:bg-white"
             />
             <button 
@@ -244,7 +254,7 @@ const App: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1">
-                    {selectedTestType === 'TOEFL_JR' ? '점수 (R+L)' : '점수'}
+                    {selectedTestType === 'TOEFL_JR' ? '점수 (R+L)' : selectedTestType === 'TO' ? '독해 점수' : '점수'}
                   </label>
                   <input
                     type="text"
@@ -254,9 +264,11 @@ const App: React.FC = () => {
                     className="w-full p-3.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50"
                   />
                 </div>
-                {selectedTestType === 'TOEFL_JR' && (
+                {(selectedTestType === 'TOEFL_JR' || selectedTestType === 'TO') && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1">점수 (S+W)</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1">
+                      {selectedTestType === 'TOEFL_JR' ? '점수 (S+W)' : '문법 점수'}
+                    </label>
                     <input
                       type="text"
                       value={manualScore2}
@@ -268,16 +280,18 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1">배정반</label>
-                <input
-                  type="text"
-                  value={manualClass}
-                  onChange={(e) => setManualClass(e.target.value)}
-                  placeholder="예: MEGA 수금"
-                  className="w-full p-3.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50"
-                />
-              </div>
+              {selectedTestType !== 'TO' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1">배정반</label>
+                  <input
+                    type="text"
+                    value={manualClass}
+                    onChange={(e) => setManualClass(e.target.value)}
+                    placeholder="예: MEGA 수금"
+                    className="w-full p-3.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50"
+                  />
+                </div>
+              )}
               <button 
                 onClick={addManual}
                 className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
@@ -330,7 +344,10 @@ const App: React.FC = () => {
                             </span>
                           </div>
                           <div className="text-sm font-bold text-slate-400">
-                            {student.assignedClass} · {student.score}점 {student.score2 ? `(${student.score2}점)` : ''}
+                            {student.testType === 'TO' 
+                              ? `독해 ${student.score} · 문법 ${student.score2}` 
+                              : `${student.assignedClass} · ${student.score}점 ${student.score2 ? `(${student.score2}점)` : ''}`
+                            }
                           </div>
                         </div>
                       </div>
